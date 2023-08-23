@@ -6,6 +6,4 @@ type Input struct {
 	Referer string
 
 	Origin string
-
-	FileType string
 }

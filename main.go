@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	hls "github.com/bitknox/hls-proxy/hls"
 	parsing "github.com/bitknox/hls-proxy/parsing"
 	"github.com/bitknox/hls-proxy/proxy"
 	"github.com/labstack/echo/v4"
@@ -20,14 +21,15 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Routes
-	e.GET("/", hello)
+	e.GET("/manifest", manifest_proxy)
+	e.GET("/ts", ts_proxy)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
 // Handler
-func hello(c echo.Context) error {
+func manifest_proxy(c echo.Context) error {
 
 	//parse incomming base64 query string and decde it into model struct
 	input, err := parsing.ParseInputUrl(c.QueryParam("input"))
@@ -56,6 +58,42 @@ func hello(c echo.Context) error {
 
 	defer resp.Body.Close()
 	//add referer and origin headers if applicable
+	c.Response().Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	//modify m3u8 file to point to proxy
+	bytes, err := io.ReadAll(resp.Body)
+	res, err := hls.ModifyM3u8(string(bytes))
+
+	return c.String(http.StatusOK, res)
+
+}
+
+func ts_proxy(c echo.Context) error {
+	//parse incomming base64 query string and decde it into model struct
+	input, err := parsing.ParseInputUrl(c.QueryParam("input"))
+
+	req, err := http.NewRequest("GET", input.Url, nil)
+	if err != nil {
+		return err
+	}
+
+	//add headers if applicable
+	if input.Referer != "" {
+		req.Header.Add("Referer", input.Referer)
+	}
+	if input.Origin != "" {
+		req.Header.Add("Origin", input.Origin)
+	}
+	req.Header.Add("User-Agent", proxy.USER_AGENT)
+
+	//send request to proxy
+	resp, err := proxy.Proxy.Client.Do(req)
+
+	//might not be needed
+	for header, values := range resp.Header {
+		c.Response().Header().Set(header, values[0])
+	}
+
+	defer resp.Body.Close()
 
 	io.Copy(c.Response().Writer, resp.Body)
 	return nil
