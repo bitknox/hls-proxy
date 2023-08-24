@@ -14,8 +14,8 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 
 	var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
 	var newManifest = strings.Builder{}
-	host := os.Getenv("host")
-	port := os.Getenv("port")
+	host := os.Getenv("HOST")
+	port := os.Getenv("PORT")
 
 	parentPath := path.Dir(host_url.Path)
 	host_url.Path = parentPath

@@ -38,7 +38,7 @@ func manifest_proxy(c echo.Context) error {
 
 	//parse incomming base64 query string and decde it into model struct
 	input, err := parsing.ParseInputUrl(c.QueryParam("input"))
-	println(input.Url)
+
 	req, err := http.NewRequest("GET", input.Url, nil)
 	if err != nil {
 		return err
