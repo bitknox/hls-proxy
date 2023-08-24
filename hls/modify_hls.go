@@ -4,18 +4,22 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/cristalhq/base64"
 )
 
 func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
+
+	var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
 	var newManifest = strings.Builder{}
 	host := os.Getenv("host")
 	port := os.Getenv("port")
 
 	parentPath := path.Dir(host_url.Path)
 	host_url.Path = parentPath
+	host_url.RawQuery = ""
 	parentUrl := host_url.String()
 
 	newManifest.Grow(len(m3u8))
@@ -27,8 +31,13 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 			}
 			if line[0] == '#' {
 				//check for known tags and use regex to replace URI inside
+				if strings.HasPrefix(line, "#EXT-X-MEDIA") {
+					match := re.FindStringSubmatch(line)
 
-				newManifest.WriteString(line)
+					newManifest.WriteString(strings.Replace(line, match[1], "http://"+host+":"+port+"/manifest?input="+base64.StdEncoding.EncodeToString([]byte(parentUrl+"/"+match[1])), 1))
+				} else {
+					newManifest.WriteString(line)
+				}
 			} else if len(strings.TrimSpace(line)) > 0 {
 
 				AddProxyUrl(manifestAddr, line, true, parentUrl, &newManifest)
@@ -38,6 +47,7 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 	} else {
 		tsAddr := "http://" + host + ":" + port + "/ts?input="
 		for _, line := range strings.Split(strings.TrimRight(m3u8, "\n"), "\n") {
+
 			if line[0] == '#' {
 				newManifest.WriteString(line)
 			} else {
