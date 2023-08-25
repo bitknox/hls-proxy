@@ -14,7 +14,7 @@ import (
 
 var counter atomic.Int32
 
-func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
+func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string, error) {
 
 	var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
 	var newManifest = strings.Builder{}
@@ -51,7 +51,11 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 		}
 	} else {
 		//most likely a master playlist containing the video elements
+
+		var clipUrls []string
 		var playlistId = counter.Add(1)
+		var strId = strconv.Itoa(int(playlistId))
+
 		tsAddr := "http://" + host + ":" + port + "/"
 		for _, line := range strings.Split(strings.TrimRight(m3u8, "\n"), "\n") {
 
@@ -59,13 +63,15 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 				newManifest.WriteString(line)
 			} else {
 				//the line here is a url to ts file that can be prefetched
-
+				clipUrls = append(clipUrls, parentUrl+"/"+line)
 				AddProxyUrl(tsAddr, line, false, parentUrl, &newManifest)
 				newManifest.WriteString(".ts")
-				newManifest.WriteString("?id=" + strconv.Itoa(int(playlistId)))
+				newManifest.WriteString("?pId=" + strId)
 			}
 			newManifest.WriteString("\n")
 		}
+
+		prefetcher.playlistInfo[strId] = NewPrefetchPlaylist(strconv.Itoa(int(playlistId)), clipUrls)
 	}
 
 	return newManifest.String(), nil

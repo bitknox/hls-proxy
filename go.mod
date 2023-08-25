@@ -4,9 +4,13 @@ go 1.20
 
 require github.com/stretchr/testify v1.8.1
 
+require github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
+
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cristalhq/base64 v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/deckarep/golang-set/v2 v2.3.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/labstack/echo/v4 v4.11.1 // indirect

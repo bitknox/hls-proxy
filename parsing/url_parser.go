@@ -2,6 +2,7 @@ package parsing
 
 import (
 	"encoding/base64"
+
 	"strings"
 
 	"github.com/bitknox/hls-proxy/model"

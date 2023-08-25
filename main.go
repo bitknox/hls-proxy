@@ -24,13 +24,13 @@ func main() {
 	// Middleware
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+	//e.Use(middleware.Recover())
 
 	// Routes
 	e.GET("/:input", handle_request)
 
 	// Start server
-	go e.Logger.Fatal(e.Start(":1323"))
+	go e.Logger.Fatal(e.Start("localhost:1323"))
 
 }
 
@@ -83,7 +83,7 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	//modify m3u8 file to point to proxy
 	start := time.Now()
 	bytes, err := io.ReadAll(resp.Body)
-	res, err := hls.ModifyM3u8(string(bytes), finalURL)
+	res, err := hls.ModifyM3u8(string(bytes), finalURL, preFetcher)
 	elapsed := time.Since(start)
 	log.Printf("Modifying manifest took %s", elapsed)
 	c.Response().Writer.Write([]byte(res))
@@ -91,9 +91,20 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	return nil
 }
 
+var preFetcher *hls.Prefetcher = hls.NewPrefetcher(20)
+
 func ts_proxy(c echo.Context, input *model.Input) error {
 	//parse incomming base64 query string and decde it into model struct
 
+	pId := c.QueryParam("pId")
+	//check if we have the ts file in cache
+	if pId != "" {
+		data, found := preFetcher.GetFetchedClip(pId, input.Url)
+		if found {
+			c.Response().Writer.Write(data)
+			return nil
+		}
+	}
 	req, err := http.NewRequest("GET", input.Url, nil)
 
 	if err != nil {
