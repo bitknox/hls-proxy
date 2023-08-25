@@ -106,11 +106,6 @@ func ts_proxy(c echo.Context) error {
 	//send request to original host
 	resp, err := proxy.Proxy.Client.Do(req)
 
-	//might not be needed
-	for header, values := range resp.Header {
-		c.Response().Header().Set(header, values[0])
-	}
-
 	defer resp.Body.Close()
 
 	io.Copy(c.Response().Writer, resp.Body)
