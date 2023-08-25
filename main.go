@@ -84,8 +84,9 @@ func manifest_proxy(c echo.Context) error {
 	res, err := hls.ModifyM3u8(string(bytes), finalURL)
 	elapsed := time.Since(start)
 	log.Printf("Modifying manifest took %s", elapsed)
-	return c.String(http.StatusOK, res)
-
+	c.Response().Writer.Write([]byte(res))
+	c.Response().Status = http.StatusOK
+	return nil
 }
 
 func ts_proxy(c echo.Context) error {
