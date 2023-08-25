@@ -68,6 +68,15 @@ func manifest_proxy(c echo.Context) error {
 	defer resp.Body.Close()
 	//add referer and origin headers if applicable
 	c.Response().Header().Set("Content-Type", "application/x-mpegURL")
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+	c.Response().Header().Set("Access-Control-Allow-Methods", "*")
+	c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
+	c.Response().Header().Set("Access-Control-Max-Age", "86400")
+	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().Header().Set("Keep-Alive", "timeout=5")
+	c.Response().Header().Del("Vary")
+
 	finalURL := resp.Request.URL
 	//modify m3u8 file to point to proxy
 	start := time.Now()
