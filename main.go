@@ -8,6 +8,7 @@ import (
 	"time"
 
 	hls "github.com/bitknox/hls-proxy/hls"
+	"github.com/bitknox/hls-proxy/model"
 	parsing "github.com/bitknox/hls-proxy/parsing"
 	"github.com/bitknox/hls-proxy/proxy"
 	"github.com/joho/godotenv"
@@ -34,18 +35,20 @@ func main() {
 }
 
 func handle_request(c echo.Context) error {
-	if strings.HasSuffix(c.Request().URL.Path, "m3u8") {
-		return manifest_proxy(c)
+	input, e := parsing.ParseInputUrl(c.Param("input"))
+	if e != nil {
+		return e
+	}
+
+	if strings.HasSuffix(input.Url, "m3u8") {
+		return manifest_proxy(c, input)
 	} else {
-		return ts_proxy(c)
+		return ts_proxy(c, input)
 	}
 }
 
 // Handler
-func manifest_proxy(c echo.Context) error {
-
-	//parse incomming base64 query string and decde it into model struct
-	input, err := parsing.ParseInputUrl(c.Param("input"))
+func manifest_proxy(c echo.Context, input *model.Input) error {
 
 	req, err := http.NewRequest("GET", input.Url, nil)
 	if err != nil {
@@ -75,15 +78,6 @@ func manifest_proxy(c echo.Context) error {
 
 	defer resp.Body.Close()
 	//add referer and origin headers if applicable
-	c.Response().Header().Set("Content-Type", "application/x-mpegURL")
-	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
-	c.Response().Header().Set("Access-Control-Allow-Methods", "*")
-	c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
-	c.Response().Header().Set("Access-Control-Max-Age", "86400")
-	c.Response().Header().Set("Connection", "keep-alive")
-	c.Response().Header().Set("Keep-Alive", "timeout=5")
-	c.Response().Header().Del("Vary")
 
 	finalURL := resp.Request.URL
 	//modify m3u8 file to point to proxy
@@ -97,9 +91,8 @@ func manifest_proxy(c echo.Context) error {
 	return nil
 }
 
-func ts_proxy(c echo.Context) error {
+func ts_proxy(c echo.Context, input *model.Input) error {
 	//parse incomming base64 query string and decde it into model struct
-	input, err := parsing.ParseInputUrl(c.Param("input"))
 
 	req, err := http.NewRequest("GET", input.Url, nil)
 
@@ -124,16 +117,13 @@ func ts_proxy(c echo.Context) error {
 	//send request to original host
 	resp, err := proxy.Proxy.Client.Do(req)
 
-	c.Response().Header().Set("Content-Type", "application/x-mpegURL")
-	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
-	c.Response().Header().Set("Access-Control-Allow-Methods", "*")
-	c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
-	c.Response().Header().Set("Access-Control-Max-Age", "86400")
-	c.Response().Header().Set("Connection", "keep-alive")
-	c.Response().Header().Set("Keep-Alive", "timeout=5")
-	c.Response().Header().Del("Vary")
-	c.Response().Header().Del("Content-Type")
+	if resp.Header.Get("Content-Range") != "" {
+		c.Response().Header().Set("Content-Range", resp.Header.Get("Content-Range"))
+	}
+
+	if resp.Header.Get("Content-Length") != "" {
+		c.Response().Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+	}
 
 	defer resp.Body.Close()
 

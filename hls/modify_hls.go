@@ -24,7 +24,7 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 
 	newManifest.Grow(len(m3u8))
 	if strings.Contains(m3u8, "RESOLUTION=") {
-		manifestAddr := "http://" + host + ":" + port + "/manifest?input="
+		manifestAddr := "http://" + host + ":" + port + "/"
 		for _, line := range strings.Split(strings.TrimRight(m3u8, "\n"), "\n") {
 			if len(line) == 0 {
 
@@ -34,22 +34,20 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 				//check for known tags and use regex to replace URI inside
 				if strings.HasPrefix(line, "#EXT-X-MEDIA") {
 					match := re.FindStringSubmatch(line)
-
-					newManifest.WriteString(strings.Replace(line, match[1], "http://"+host+":"+port+"/manifest?input="+base64.StdEncoding.EncodeToString([]byte(parentUrl+"/"+match[1])), 1))
+					newManifest.WriteString(strings.Replace(line, match[1], "http://"+host+":"+port+"/"+base64.StdEncoding.EncodeToString([]byte(parentUrl+"/"+match[1])), 1))
 				} else {
 					newManifest.WriteString(line)
 				}
 			} else if len(strings.TrimSpace(line)) > 0 {
 
 				AddProxyUrl(manifestAddr, line, true, parentUrl, &newManifest)
+
 			}
 			newManifest.WriteString("\n")
 		}
 	} else {
 		tsAddr := "http://" + host + ":" + port + "/"
-		lines := strings.Split(strings.TrimRight(m3u8, "\n"), "\n")
-		last_index := len(lines) - 1
-		for i, line := range lines {
+		for _, line := range strings.Split(strings.TrimRight(m3u8, "\n"), "\n") {
 
 			if line[0] == '#' {
 				newManifest.WriteString(line)
@@ -57,9 +55,7 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 				AddProxyUrl(tsAddr, line, false, parentUrl, &newManifest)
 				newManifest.WriteString(".ts")
 			}
-			if i != last_index {
-				newManifest.WriteString("\n")
-			}
+			newManifest.WriteString("\n")
 		}
 	}
 
