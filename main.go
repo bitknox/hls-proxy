@@ -26,7 +26,7 @@ func main() {
 
 	// Routes
 	e.GET("/manifest", manifest_proxy)
-	e.GET("/ts/:input", ts_proxy)
+	e.GET("/:input", ts_proxy)
 
 	// Start server
 	go e.Logger.Fatal(e.Start(":1323"))
