@@ -52,6 +52,7 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 				newManifest.WriteString(line)
 			} else {
 				AddProxyUrl(tsAddr, line, false, parentUrl, &newManifest)
+				newManifest.WriteString(".ts")
 			}
 			newManifest.WriteString("\n")
 		}

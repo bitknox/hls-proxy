@@ -67,7 +67,7 @@ func manifest_proxy(c echo.Context) error {
 
 	defer resp.Body.Close()
 	//add referer and origin headers if applicable
-	c.Response().Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	c.Response().Header().Set("Content-Type", "application/x-mpegURL")
 	finalURL := resp.Request.URL
 	//modify m3u8 file to point to proxy
 	start := time.Now()
