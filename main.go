@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	hls "github.com/bitknox/hls-proxy/hls"
@@ -25,19 +26,26 @@ func main() {
 	//e.Use(middleware.Recover())
 
 	// Routes
-	e.GET("/manifest", manifest_proxy)
-	e.GET("/:input", ts_proxy)
+	e.GET("/:input", handle_request)
 
 	// Start server
 	go e.Logger.Fatal(e.Start(":1323"))
 
 }
 
+func handle_request(c echo.Context) error {
+	if strings.HasSuffix(c.Request().URL.Path, "m3u8") {
+		return manifest_proxy(c)
+	} else {
+		return ts_proxy(c)
+	}
+}
+
 // Handler
 func manifest_proxy(c echo.Context) error {
 
 	//parse incomming base64 query string and decde it into model struct
-	input, err := parsing.ParseInputUrl(c.QueryParam("input"))
+	input, err := parsing.ParseInputUrl(c.Param("input"))
 
 	req, err := http.NewRequest("GET", input.Url, nil)
 	if err != nil {
