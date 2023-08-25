@@ -24,13 +24,13 @@ func main() {
 	// Middleware
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
-	//e.Use(middleware.Recover())
+	e.Use(middleware.Recover())
 
 	// Routes
 	e.GET("/:input", handle_request)
 
 	// Start server
-	go e.Logger.Fatal(e.Start(":1323"))
+	go e.Logger.Fatal(e.Start("localhost:1323"))
 
 }
 

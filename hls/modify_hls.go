@@ -5,10 +5,14 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/cristalhq/base64"
 )
+
+var counter atomic.Int32
 
 func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 
@@ -46,14 +50,19 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 			newManifest.WriteString("\n")
 		}
 	} else {
+		//most likely a master playlist containing the video elements
+		var playlistId = counter.Add(1)
 		tsAddr := "http://" + host + ":" + port + "/"
 		for _, line := range strings.Split(strings.TrimRight(m3u8, "\n"), "\n") {
 
 			if line[0] == '#' {
 				newManifest.WriteString(line)
 			} else {
+				//the line here is a url to ts file that can be prefetched
+
 				AddProxyUrl(tsAddr, line, false, parentUrl, &newManifest)
 				newManifest.WriteString(".ts")
+				newManifest.WriteString("?id=" + strconv.Itoa(int(playlistId)))
 			}
 			newManifest.WriteString("\n")
 		}
