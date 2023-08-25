@@ -27,6 +27,7 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 		manifestAddr := "http://" + host + ":" + port + "/manifest?input="
 		for _, line := range strings.Split(strings.TrimRight(m3u8, "\n"), "\n") {
 			if len(line) == 0 {
+
 				continue
 			}
 			if line[0] == '#' {
@@ -46,7 +47,9 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 		}
 	} else {
 		tsAddr := "http://" + host + ":" + port + "/ts?input="
-		for _, line := range strings.Split(strings.TrimRight(m3u8, "\n"), "\n") {
+		lines := strings.Split(strings.TrimRight(m3u8, "\n"), "\n")
+		last_index := len(lines) - 1
+		for i, line := range lines {
 
 			if line[0] == '#' {
 				newManifest.WriteString(line)
@@ -54,7 +57,9 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 				AddProxyUrl(tsAddr, line, false, parentUrl, &newManifest)
 				newManifest.WriteString(".ts")
 			}
-			newManifest.WriteString("\n")
+			if i != last_index {
+				newManifest.WriteString("\n")
+			}
 		}
 	}
 
