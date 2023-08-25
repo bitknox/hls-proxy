@@ -115,6 +115,17 @@ func ts_proxy(c echo.Context) error {
 	//send request to original host
 	resp, err := proxy.Proxy.Client.Do(req)
 
+	c.Response().Header().Set("Content-Type", "application/x-mpegURL")
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Access-Control-Allow-Headers", "*")
+	c.Response().Header().Set("Access-Control-Allow-Methods", "*")
+	c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
+	c.Response().Header().Set("Access-Control-Max-Age", "86400")
+	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().Header().Set("Keep-Alive", "timeout=5")
+	c.Response().Header().Del("Vary")
+	c.Response().Header().Del("Content-Type")
+
 	defer resp.Body.Close()
 
 	io.Copy(c.Response().Writer, resp.Body)
