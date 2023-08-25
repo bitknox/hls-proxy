@@ -26,7 +26,7 @@ func main() {
 
 	// Routes
 	e.GET("/manifest", manifest_proxy)
-	e.GET("/ts", ts_proxy)
+	e.GET("/ts/:input", ts_proxy)
 
 	// Start server
 	go e.Logger.Fatal(e.Start(":1323"))
@@ -91,7 +91,7 @@ func manifest_proxy(c echo.Context) error {
 
 func ts_proxy(c echo.Context) error {
 	//parse incomming base64 query string and decde it into model struct
-	input, err := parsing.ParseInputUrl(c.QueryParam("input"))
+	input, err := parsing.ParseInputUrl(c.Param("input"))
 
 	req, err := http.NewRequest("GET", input.Url, nil)
 

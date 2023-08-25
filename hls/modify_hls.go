@@ -46,7 +46,7 @@ func ModifyM3u8(m3u8 string, host_url *url.URL) (string, error) {
 			newManifest.WriteString("\n")
 		}
 	} else {
-		tsAddr := "http://" + host + ":" + port + "/ts?input="
+		tsAddr := "http://" + host + ":" + port + "/ts/"
 		lines := strings.Split(strings.TrimRight(m3u8, "\n"), "\n")
 		last_index := len(lines) - 1
 		for i, line := range lines {
