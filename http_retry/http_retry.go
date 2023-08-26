@@ -11,6 +11,7 @@ import (
 )
 
 func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Response, error) {
+	request.Close = true
 	var resp *http.Response
 	err := retry.Do(
 		func() error {
