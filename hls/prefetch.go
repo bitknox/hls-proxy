@@ -5,6 +5,8 @@ import (
 	"math"
 	"net/http"
 	"runtime"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -171,9 +173,6 @@ func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
 	})
 }
 
-// TODO: We might want to have some sort of queue for prefetching clips
-// so that we don't spam the server with requests, this queue could also be prioritized based
-// when the clip is needed
 func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlistItem, ok := p.playlistInfo.Get(playlistId)
 	if !ok {
@@ -181,16 +180,29 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	}
 
 	playlist := playlistItem.Data
-
+	maxConcurrentRequestsLimiterChannel := maxConcurrentRequestsLimiter(10)
+	var waitGroup sync.WaitGroup
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
+	var requestsInFlight = atomic.Int32{}
+
 	for _, clip := range nextClips {
+		waitGroup.Add(1)
 		go func(clip string) {
 			if p.currentlyPrefetching.Contains(clip) || playlist.fetchedClips.Has(clip) {
 				return
 			}
-			p.currentlyPrefetching.Add(clip)
 
+			p.currentlyPrefetching.Add(clip)
+			maxConcurrentRequestsLimiterChannel <- true
+			requestsInFlight.Add(1)
+			println(requestsInFlight.Load())
 			data, err := fetchClip(clip)
+
+			defer func() {
+				requestsInFlight.Add(-1)
+				<-maxConcurrentRequestsLimiterChannel
+			}()
+			waitGroup.Done()
 
 			if err != nil {
 				log.Debug("Error fetching clip ", clip, err)
@@ -200,13 +212,19 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 			log.Debug("Fetched clip ", clip)
 			p.currentlyPrefetching.Remove(clip)
 			playlist.addClip(clip, data)
-			log.Debug("Current clips in playlist", playlist.fetchedClips.Count())
+			log.Debug("Number of cached clips", playlist.fetchedClips.Count())
 
 			return
 		}(clip)
 
 	}
+	waitGroup.Wait()
+	println(requestsInFlight.Load())
 	return nil
+}
+
+func maxConcurrentRequestsLimiter(concurrentRequests uint) chan bool {
+	return make(chan bool, concurrentRequests)
 }
 
 func fetchClip(clipUrl string) ([]byte, error) {

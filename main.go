@@ -100,7 +100,7 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	return nil
 }
 
-var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(20, 20*time.Second, 5*time.Hour, 30*time.Minute)
+var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(60, 20*time.Second, 5*time.Hour, 30*time.Minute)
 
 func ts_proxy(c echo.Context, input *model.Input) error {
 	//parse incomming base64 query string and decde it into model struct

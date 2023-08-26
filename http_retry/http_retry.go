@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/bitknox/hls-proxy/proxy"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -14,7 +15,7 @@ func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Respons
 	err := retry.Do(
 		func() error {
 			var err error
-			resp, err = http.DefaultClient.Do(request)
+			resp, err = proxy.DefaultHttpClient.Do(request)
 			if resp.StatusCode >= 300 || resp.StatusCode < 200 {
 				return errors.New("Non 2xx status code")
 			}
