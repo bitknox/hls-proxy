@@ -108,8 +108,11 @@ func (m PrefetchPlaylist) getNextPrefetchClips(clipUrl string, count int) []stri
 		return []string{}
 	}
 	lastCliPindex := math.Min(float64(clipIndex+count), float64(len(m.playlistClips)-1))
-
-	return m.playlistClips[clipIndex+1 : int(lastCliPindex)]
+	firstclipIndex := clipIndex + 1
+	if firstclipIndex > int(lastCliPindex) {
+		return []string{}
+	}
+	return m.playlistClips[firstclipIndex:int(lastCliPindex)]
 }
 
 func (m PrefetchPlaylist) addClip(clipUrl string, data []byte) {
