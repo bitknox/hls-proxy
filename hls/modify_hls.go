@@ -71,7 +71,8 @@ func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string,
 			newManifest.WriteString("\n")
 		}
 
-		prefetcher.playlistInfo[strId] = NewPrefetchPlaylist(strconv.Itoa(int(playlistId)), clipUrls)
+		prefetcher.AddPlaylistToCache(strId, clipUrls)
+
 	}
 
 	return newManifest.String(), nil

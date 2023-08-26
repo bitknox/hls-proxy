@@ -8,6 +8,7 @@ import (
 	"time"
 
 	hls "github.com/bitknox/hls-proxy/hls"
+	"github.com/bitknox/hls-proxy/http_retry"
 	"github.com/bitknox/hls-proxy/model"
 	parsing "github.com/bitknox/hls-proxy/parsing"
 	"github.com/bitknox/hls-proxy/proxy"
@@ -65,7 +66,7 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	req.Header.Add("User-Agent", proxy.USER_AGENT)
 
 	//send request to proxy
-	resp, err := proxy.Proxy.Client.Do(req)
+	resp, err := http_retry.ExecuteRetryableRequest(req)
 
 	if err != nil {
 		return err
@@ -91,7 +92,7 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	return nil
 }
 
-var preFetcher *hls.Prefetcher = hls.NewPrefetcher(20)
+var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(20, 20*time.Second, 5*time.Hour, 30*time.Minute)
 
 func ts_proxy(c echo.Context, input *model.Input) error {
 	//parse incomming base64 query string and decde it into model struct
@@ -126,7 +127,7 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 	req.Header.Add("User-Agent", proxy.USER_AGENT)
 
 	//send request to original host
-	resp, err := proxy.Proxy.Client.Do(req)
+	resp, err := http_retry.ExecuteRetryableRequest(req)
 
 	if resp.Header.Get("Content-Range") != "" {
 		c.Response().Header().Set("Content-Range", resp.Header.Get("Content-Range"))

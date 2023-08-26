@@ -4,7 +4,10 @@ go 1.20
 
 require github.com/stretchr/testify v1.8.1
 
-require github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
+require (
+	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
+	github.com/tkennon/ticker v1.0.3 // indirect
+)
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible

@@ -5,22 +5,64 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"runtime"
+	"time"
 
-	"github.com/avast/retry-go"
+	http_retry "github.com/bitknox/hls-proxy/http_retry"
 	mapset "github.com/deckarep/golang-set/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
+type Cleanable interface {
+	setJanitor(j *Janitor)
+	getJanitor() *Janitor
+	Clean()
+}
+
+type CacheItem[T any] struct {
+	Data       T
+	Expiration time.Time
+}
+
+type Janitor struct {
+	Interval time.Duration
+	stop     chan bool
+}
+
+func (j *Janitor) Run(c Cleanable) {
+	ticker := time.NewTicker(j.Interval)
+	for {
+		select {
+		case <-ticker.C:
+			c.Clean()
+		case <-j.stop:
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+func runJanitor(c Cleanable, ci time.Duration) {
+	j := &Janitor{
+		Interval: ci,
+		stop:     make(chan bool),
+	}
+	c.setJanitor(j)
+	go j.Run(c)
+}
+
 type PrefetchPlaylist struct {
+	clipRetention time.Duration
+	janitor       *Janitor
 	playlistId    string
 	playlistClips []string
 	clipToIndex   cmap.ConcurrentMap[string, int]
-	fetchedClips  cmap.ConcurrentMap[string, []byte]
+	fetchedClips  cmap.ConcurrentMap[string, CacheItem[[]byte]]
 }
 
-func NewPrefetchPlaylist(playlistId string, playlistClips []string) *PrefetchPlaylist {
+func newPrefetchPlaylist(playlistId string, playlistClips []string, clipRetention time.Duration) *PrefetchPlaylist {
 	clipToIndex := cmap.New[int]()
-	fetchedClips := cmap.New[[]byte]()
+	fetchedClips := cmap.New[CacheItem[[]byte]]()
 
 	for index, clip := range playlistClips {
 		clipToIndex.Set(clip, index)
@@ -30,7 +72,48 @@ func NewPrefetchPlaylist(playlistId string, playlistClips []string) *PrefetchPla
 		playlistClips: playlistClips,
 		clipToIndex:   clipToIndex,
 		fetchedClips:  fetchedClips,
+		clipRetention: clipRetention,
 	}
+}
+
+func (m PrefetchPlaylist) getJanitor() *Janitor {
+	return m.janitor
+}
+
+func newPrefetchPlaylistWithJanitor(playlistId string, playlistClips []string, janitorInterval time.Duration, clipRetention time.Duration) *PrefetchPlaylist {
+	p := newPrefetchPlaylist(playlistId, playlistClips, clipRetention)
+	initJanitor(p, janitorInterval)
+	return p
+}
+
+func initJanitor(cache Cleanable, ci time.Duration) {
+	if ci <= 0 {
+		return
+	}
+	runtime.SetFinalizer(cache, func(cache Cleanable) {
+		stopJanitor(cache.getJanitor())
+	})
+	runJanitor(cache, ci)
+}
+
+func stopJanitor(j *Janitor) {
+	j.stop <- true
+}
+
+func (m PrefetchPlaylist) setJanitor(j *Janitor) {
+	m.janitor = j
+}
+
+func (m PrefetchPlaylist) Clean() {
+	println("Cleaning playlist")
+	currentTime := time.Now()
+	for clipUrl, clipItem := range m.fetchedClips.Items() {
+		if clipItem.Expiration.Before(currentTime) {
+			println("Removing clip")
+			m.fetchedClips.Remove(clipUrl)
+		}
+	}
+
 }
 
 func (m PrefetchPlaylist) getNextPrefetchClips(clipUrl string, count int) []string {
@@ -45,22 +128,31 @@ func (m PrefetchPlaylist) getNextPrefetchClips(clipUrl string, count int) []stri
 }
 
 func (m PrefetchPlaylist) addClip(clipUrl string, data []byte) {
-	m.fetchedClips.Set(clipUrl, data)
+	expires := time.Now().Add(m.clipRetention)
+	m.fetchedClips.Set(clipUrl, CacheItem[[]byte]{
+		Data:       data,
+		Expiration: expires,
+	})
 }
 
 type Prefetcher struct {
+	janitor              *Janitor
 	clipPrefetchCount    int
 	currentlyPrefetching mapset.Set[string]
-	playlistInfo         map[string]*PrefetchPlaylist
+	playlistInfo         cmap.ConcurrentMap[string, CacheItem[*PrefetchPlaylist]]
+	playlistRetention    time.Duration
+	clipRetention        time.Duration
 }
 
 func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, bool) {
-	playlist, ok := p.playlistInfo[playlistId]
+	playlistItem, ok := p.playlistInfo.Get(playlistId)
 
 	if !ok {
 
 		return nil, false
 	}
+
+	playlist := playlistItem.Data
 
 	data, foundClip := playlist.fetchedClips.Get(clipUrl)
 
@@ -76,16 +168,26 @@ func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, b
 	if !foundClip {
 		return nil, false
 	} else {
-		return data, ok
+		return data.Data, ok
 	}
 
 }
 
+func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
+	expires := time.Now().Add(p.playlistRetention)
+	p.playlistInfo.Set(playlistId, CacheItem[*PrefetchPlaylist]{
+		Data:       newPrefetchPlaylistWithJanitor(playlistId, clipUrls, 20*time.Second, p.playlistRetention),
+		Expiration: expires,
+	})
+}
+
 func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
-	playlist, ok := p.playlistInfo[playlistId]
+	playlistItem, ok := p.playlistInfo.Get(playlistId)
 	if !ok {
 		return nil
 	}
+
+	playlist := playlistItem.Data
 
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
 	for _, clip := range nextClips {
@@ -113,21 +215,9 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 }
 
 func fetchClip(clipUrl string) ([]byte, error) {
-	var resp *http.Response
-	err := retry.Do(
-		func() error {
-			var err error
-			resp, err = http.Get(clipUrl)
-			return err
-		},
-		retry.Attempts(3),
-		retry.OnRetry(func(n uint, err error) {
-			log.Printf("Retrying request after error: %v", err)
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
+	request, err := http.NewRequest("GET", clipUrl, nil)
+
+	resp, err := http_retry.ExecuteRetryableRequest(request)
 	defer resp.Body.Close()
 
 	bytes, err := io.ReadAll(resp.Body)
@@ -139,10 +229,36 @@ func fetchClip(clipUrl string) ([]byte, error) {
 	return bytes, nil
 }
 
-func NewPrefetcher(clipPrefetchCount int) *Prefetcher {
+func NewPrefetcher(clipPrefetchCount int, playlistRetention time.Duration, clipRetention time.Duration) *Prefetcher {
 	return &Prefetcher{
 		clipPrefetchCount:    clipPrefetchCount,
 		currentlyPrefetching: mapset.NewSet[string](),
-		playlistInfo:         map[string]*PrefetchPlaylist{},
+		playlistInfo:         cmap.New[CacheItem[*PrefetchPlaylist]](),
+		playlistRetention:    playlistRetention,
+		clipRetention:        clipRetention,
 	}
+}
+
+func (p Prefetcher) setJanitor(j *Janitor) {
+	p.janitor = j
+}
+
+func (p Prefetcher) getJanitor() *Janitor {
+	return p.janitor
+}
+
+func (p Prefetcher) Clean() {
+	println("Cleaning")
+	currentTime := time.Now()
+	for playlistId, playlistItem := range p.playlistInfo.Items() {
+		if playlistItem.Expiration.Before(currentTime) {
+			p.playlistInfo.Remove(playlistId)
+		}
+	}
+}
+
+func NewPrefetcherWithJanitor(clipPrefetchCount int, janitorInterval time.Duration, playlistRetention time.Duration, clipRetention time.Duration) *Prefetcher {
+	p := NewPrefetcher(clipPrefetchCount, playlistRetention, clipRetention)
+	initJanitor(p, janitorInterval)
+	return p
 }
