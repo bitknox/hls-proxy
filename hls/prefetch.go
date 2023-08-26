@@ -53,7 +53,6 @@ func runJanitor(c Cleanable, ci time.Duration) {
 
 type PrefetchPlaylist struct {
 	clipRetention time.Duration
-	janitor       *Janitor
 	playlistId    string
 	playlistClips []string
 	clipToIndex   cmap.ConcurrentMap[string, int]
@@ -76,16 +75,6 @@ func newPrefetchPlaylist(playlistId string, playlistClips []string, clipRetentio
 	}
 }
 
-func (m PrefetchPlaylist) getJanitor() *Janitor {
-	return m.janitor
-}
-
-func newPrefetchPlaylistWithJanitor(playlistId string, playlistClips []string, janitorInterval time.Duration, clipRetention time.Duration) *PrefetchPlaylist {
-	p := newPrefetchPlaylist(playlistId, playlistClips, clipRetention)
-	initJanitor(p, janitorInterval)
-	return p
-}
-
 func initJanitor(cache Cleanable, ci time.Duration) {
 	if ci <= 0 {
 		return
@@ -98,10 +87,6 @@ func initJanitor(cache Cleanable, ci time.Duration) {
 
 func stopJanitor(j *Janitor) {
 	j.stop <- true
-}
-
-func (m PrefetchPlaylist) setJanitor(j *Janitor) {
-	m.janitor = j
 }
 
 func (m PrefetchPlaylist) Clean() {
@@ -176,7 +161,7 @@ func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, b
 func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
 	expires := time.Now().Add(p.playlistRetention)
 	p.playlistInfo.Set(playlistId, CacheItem[*PrefetchPlaylist]{
-		Data:       newPrefetchPlaylistWithJanitor(playlistId, clipUrls, 20*time.Second, p.playlistRetention),
+		Data:       newPrefetchPlaylist(playlistId, clipUrls, 20*time.Second),
 		Expiration: expires,
 	})
 }
@@ -253,6 +238,9 @@ func (p Prefetcher) Clean() {
 	for playlistId, playlistItem := range p.playlistInfo.Items() {
 		if playlistItem.Expiration.Before(currentTime) {
 			p.playlistInfo.Remove(playlistId)
+		} else {
+			playlist := playlistItem.Data
+			playlist.Clean()
 		}
 	}
 }
