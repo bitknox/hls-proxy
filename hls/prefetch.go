@@ -144,7 +144,7 @@ func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, b
 	clipIndex, foundIndex := playlist.clipToIndex.Get(clipUrl)
 
 	if foundIndex {
-
+		println("Found index")
 		firstClip := math.Min(float64(clipIndex+1), float64(len(playlist.playlistClips)-1))
 
 		go p.prefetchClips(playlist.playlistClips[int(firstClip)], playlistId)
@@ -161,7 +161,7 @@ func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, b
 func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
 	expires := time.Now().Add(p.playlistRetention)
 	p.playlistInfo.Set(playlistId, CacheItem[*PrefetchPlaylist]{
-		Data:       newPrefetchPlaylist(playlistId, clipUrls, 20*time.Second),
+		Data:       newPrefetchPlaylist(playlistId, clipUrls, p.clipRetention),
 		Expiration: expires,
 	})
 }
@@ -237,6 +237,7 @@ func (p Prefetcher) Clean() {
 	currentTime := time.Now()
 	for playlistId, playlistItem := range p.playlistInfo.Items() {
 		if playlistItem.Expiration.Before(currentTime) {
+			println("removing playlist...")
 			p.playlistInfo.Remove(playlistId)
 		} else {
 			playlist := playlistItem.Data

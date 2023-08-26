@@ -99,6 +99,8 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 
 	pId := c.QueryParam("pId")
 	//check if we have the ts file in cache
+
+	start := time.Now()
 	if pId != "" {
 		data, found := preFetcher.GetFetchedClip(pId, input.Url)
 		if found {
@@ -106,6 +108,8 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 			return nil
 		}
 	}
+	elapsed := time.Since(start)
+	log.Printf("Checking cache took %s", elapsed)
 	req, err := http.NewRequest("GET", input.Url, nil)
 
 	if err != nil {
