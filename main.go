@@ -25,7 +25,7 @@ func main() {
 	// Middleware
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
-	//e.Use(middleware.Recover())
+	e.Use(middleware.Recover())
 
 	// Routes
 	e.GET("/:input", handle_request)
