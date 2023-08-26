@@ -66,7 +66,7 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	req.Header.Add("User-Agent", proxy.USER_AGENT)
 
 	//send request to proxy
-	resp, err := http_retry.ExecuteRetryableRequest(req)
+	resp, err := http_retry.ExecuteRetryableRequest(req, 3)
 
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 	req.Header.Add("User-Agent", proxy.USER_AGENT)
 
 	//send request to original host
-	resp, err := http_retry.ExecuteRetryableRequest(req)
+	resp, err := http_retry.ExecuteRetryableRequest(req, 3)
 
 	if resp.Header.Get("Content-Range") != "" {
 		c.Response().Header().Set("Content-Range", resp.Header.Get("Content-Range"))

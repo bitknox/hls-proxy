@@ -7,7 +7,7 @@ import (
 	"github.com/avast/retry-go"
 )
 
-func ExecuteRetryableRequest(request *http.Request) (*http.Response, error) {
+func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Response, error) {
 	var resp *http.Response
 	err := retry.Do(
 		func() error {

@@ -217,7 +217,7 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 func fetchClip(clipUrl string) ([]byte, error) {
 	request, err := http.NewRequest("GET", clipUrl, nil)
 
-	resp, err := http_retry.ExecuteRetryableRequest(request)
+	resp, err := http_retry.ExecuteRetryableRequest(request, 3)
 	defer resp.Body.Close()
 
 	bytes, err := io.ReadAll(resp.Body)
