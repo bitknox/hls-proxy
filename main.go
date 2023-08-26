@@ -2,8 +2,8 @@ package main
 
 import (
 	"io"
-	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -15,12 +15,21 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	godotenv.Load()
 	// Echo instance
 	e := echo.New()
+
+	logLevel := os.Getenv("LEVEL")
+
+	if logLevel == "DEBUG" {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
 
 	// Middleware
 	e.Use(middleware.CORS())
@@ -31,7 +40,11 @@ func main() {
 	e.GET("/:input", handle_request)
 
 	// Start server
-	e.Logger.Fatal(e.Start("localhost:1323"))
+	if logLevel == "DEBUG" {
+		e.Logger.Fatal(e.Start("localhost:1323"))
+	} else {
+		e.Logger.Fatal(e.Start(":1323"))
+	}
 
 }
 
@@ -72,11 +85,6 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 		return err
 	}
 
-	//might not be needed
-	/*for header, values := range resp.Header {
-		c.Response().Header().Set(header, values[0])
-	}*/
-
 	defer resp.Body.Close()
 	//add referer and origin headers if applicable
 
@@ -86,7 +94,7 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	bytes, err := io.ReadAll(resp.Body)
 	res, err := hls.ModifyM3u8(string(bytes), finalURL, preFetcher)
 	elapsed := time.Since(start)
-	log.Printf("Modifying manifest took %s", elapsed)
+	log.Debug("Modifying manifest took ", elapsed)
 	c.Response().Writer.Write([]byte(res))
 	c.Response().Status = http.StatusOK
 	return nil
@@ -109,7 +117,9 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 		}
 	}
 	elapsed := time.Since(start)
-	log.Printf("Checking cache took %s", elapsed)
+
+	log.Debug("Fetching clip from cache took ", elapsed)
+
 	req, err := http.NewRequest("GET", input.Url, nil)
 
 	if err != nil {
@@ -129,6 +139,8 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 		req.Header.Add("Origin", input.Origin)
 	}
 	req.Header.Add("User-Agent", proxy.USER_AGENT)
+
+	log.Debug("Fetching clip from origin")
 
 	//send request to original host
 	resp, err := http_retry.ExecuteRetryableRequest(req, 3)

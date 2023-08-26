@@ -1,10 +1,10 @@
 package http_retry
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/avast/retry-go"
+	log "github.com/sirupsen/logrus"
 )
 
 func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Response, error) {
@@ -17,7 +17,7 @@ func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Respons
 		},
 		retry.Attempts(3),
 		retry.OnRetry(func(n uint, err error) {
-			log.Printf("Retrying request after error: %v", err)
+			log.Error("Retrying request after error:", err, n)
 		}),
 	)
 	if err != nil {

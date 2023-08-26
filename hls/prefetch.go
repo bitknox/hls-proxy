@@ -2,11 +2,12 @@ package hls
 
 import (
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"runtime"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	http_retry "github.com/bitknox/hls-proxy/http_retry"
 	mapset "github.com/deckarep/golang-set/v2"
@@ -90,11 +91,11 @@ func stopJanitor(j *Janitor) {
 }
 
 func (m PrefetchPlaylist) Clean() {
-	println("Cleaning playlist")
+	log.Debug("Cleaning playlist ", m.playlistId)
 	currentTime := time.Now()
 	for clipUrl, clipItem := range m.fetchedClips.Items() {
 		if clipItem.Expiration.Before(currentTime) {
-			println("Removing clip")
+			log.Debug("Removed clip from ", m.playlistId, " with url", clipUrl)
 			m.fetchedClips.Remove(clipUrl)
 		}
 	}
@@ -147,7 +148,7 @@ func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, b
 	clipIndex, foundIndex := playlist.clipToIndex.Get(clipUrl)
 
 	if foundIndex {
-		println("Found index")
+
 		firstClip := math.Min(float64(clipIndex+1), float64(len(playlist.playlistClips)-1))
 
 		go p.prefetchClips(playlist.playlistClips[int(firstClip)], playlistId)
@@ -162,6 +163,7 @@ func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, b
 }
 
 func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
+	log.Debug("Adding playlist to cache ", playlistId)
 	expires := time.Now().Add(p.playlistRetention)
 	p.playlistInfo.Set(playlistId, CacheItem[*PrefetchPlaylist]{
 		Data:       newPrefetchPlaylist(playlistId, clipUrls, p.clipRetention),
@@ -169,6 +171,9 @@ func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
 	})
 }
 
+// TODO: We might want to have some sort of queue for prefetching clips
+// so that we don't spam the server with requests, this queue could also be prioritized based
+// when the clip is needed
 func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlistItem, ok := p.playlistInfo.Get(playlistId)
 	if !ok {
@@ -188,13 +193,15 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 			data, err := fetchClip(clip)
 
 			if err != nil {
-				log.Printf("Error fetching clip %s: %v", clip, err)
+				log.Debug("Error fetching clip ", clip, err)
 				p.currentlyPrefetching.Remove(clip)
 				return
 			}
-			log.Printf("Fetched clip %s", clip)
+			log.Debug("Fetched clip ", clip)
 			p.currentlyPrefetching.Remove(clip)
 			playlist.addClip(clip, data)
+			log.Debug("Current clips in playlist", playlist.fetchedClips.Count())
+
 			return
 		}(clip)
 
@@ -205,12 +212,13 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 func fetchClip(clipUrl string) ([]byte, error) {
 	request, err := http.NewRequest("GET", clipUrl, nil)
 
-	resp, err := http_retry.ExecuteRetryableRequest(request, 3)
+	resp, err := http_retry.ExecuteRetryableRequest(request, 5)
 	defer resp.Body.Close()
 
 	bytes, err := io.ReadAll(resp.Body)
 
 	if err != nil {
+		log.Error("Error fetching clip ", clipUrl, err)
 		return nil, err
 	}
 	// do something with the response
@@ -236,11 +244,11 @@ func (p Prefetcher) getJanitor() *Janitor {
 }
 
 func (p Prefetcher) Clean() {
-	println("Cleaning")
+	log.Debug("Cleaning playlist cache")
 	currentTime := time.Now()
 	for playlistId, playlistItem := range p.playlistInfo.Items() {
 		if playlistItem.Expiration.Before(currentTime) {
-			println("removing playlist...")
+			log.Debug("Removed playlist ", playlistId)
 			p.playlistInfo.Remove(playlistId)
 		} else {
 			playlist := playlistItem.Data
