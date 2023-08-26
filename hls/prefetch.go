@@ -5,8 +5,6 @@ import (
 	"math"
 	"net/http"
 	"runtime"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -180,29 +178,19 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	}
 
 	playlist := playlistItem.Data
-	maxConcurrentRequestsLimiterChannel := maxConcurrentRequestsLimiter(10)
-	var waitGroup sync.WaitGroup
+
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
-	var requestsInFlight = atomic.Int32{}
 
 	for _, clip := range nextClips {
-		waitGroup.Add(1)
+
 		go func(clip string) {
 			if p.currentlyPrefetching.Contains(clip) || playlist.fetchedClips.Has(clip) {
 				return
 			}
 
 			p.currentlyPrefetching.Add(clip)
-			maxConcurrentRequestsLimiterChannel <- true
-			requestsInFlight.Add(1)
-			println(requestsInFlight.Load())
-			data, err := fetchClip(clip)
 
-			defer func() {
-				requestsInFlight.Add(-1)
-				<-maxConcurrentRequestsLimiterChannel
-			}()
-			waitGroup.Done()
+			data, err := fetchClip(clip)
 
 			if err != nil {
 				log.Debug("Error fetching clip ", clip, err)
@@ -218,8 +206,7 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 		}(clip)
 
 	}
-	waitGroup.Wait()
-	println(requestsInFlight.Load())
+
 	return nil
 }
 
