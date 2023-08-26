@@ -118,7 +118,7 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 	}
 	elapsed := time.Since(start)
 
-	log.Debug("Fetching clip from cache took ", elapsed)
+	log.Info("Fetching clip from cache took ", elapsed)
 
 	req, err := http.NewRequest("GET", input.Url, nil)
 
