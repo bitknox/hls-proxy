@@ -31,7 +31,7 @@ func main() {
 	e.GET("/:input", handle_request)
 
 	// Start server
-	go e.Logger.Fatal(e.Start("localhost:1323"))
+	e.Logger.Fatal(e.Start("localhost:1323"))
 
 }
 
