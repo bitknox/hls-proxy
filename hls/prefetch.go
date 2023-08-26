@@ -1,7 +1,6 @@
 package hls
 
 import (
-	"io"
 	"math"
 	"net/http"
 	"runtime"
@@ -217,17 +216,14 @@ func maxConcurrentRequestsLimiter(concurrentRequests uint) chan bool {
 func fetchClip(clipUrl string) ([]byte, error) {
 	request, err := http.NewRequest("GET", clipUrl, nil)
 
-	resp, err := http_retry.ExecuteRetryableRequest(request, 5)
-	defer resp.Body.Close()
-
-	bytes, err := io.ReadAll(resp.Body)
+	resp, err := http_retry.ExecuteRetryClipRequest(request, 5)
 
 	if err != nil {
 		log.Error("Error fetching clip ", clipUrl, err)
 		return nil, err
 	}
 	// do something with the response
-	return bytes, nil
+	return resp, nil
 }
 
 func NewPrefetcher(clipPrefetchCount int, playlistRetention time.Duration, clipRetention time.Duration) *Prefetcher {
