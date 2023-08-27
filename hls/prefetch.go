@@ -7,7 +7,6 @@ import (
 	"time"
 
 	http_retry "github.com/bitknox/hls-proxy/http_retry"
-	limiter "github.com/bitknox/hls-proxy/limiter"
 	mapset "github.com/deckarep/golang-set/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	log "github.com/sirupsen/logrus"
@@ -141,7 +140,6 @@ type Prefetcher struct {
 	playlistInfo         cmap.ConcurrentMap[string, CacheItem[*PrefetchPlaylist]]
 	playlistRetention    time.Duration
 	clipRetention        time.Duration
-	limiter              limiter.Limiter
 }
 
 func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, bool) {
@@ -192,26 +190,18 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlist := playlistItem.Data
 
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
-
+	throttle := time.NewTicker(time.Second / 5)
+	defer throttle.Stop()
 	for _, clip := range nextClips {
 		//if we are already in the process of fetching the clip, or we already have it cached, skip it
+
 		if p.currentlyPrefetching.Contains(clip) || playlist.fetchedClips.Has(clip) {
 
 			continue
 		}
 		p.currentlyPrefetching.Add(clip)
+		<-throttle.C
 		go func(clip string) {
-
-			// Wait for the limiter to allow concurrency
-			start := time.Now()
-			p.limiter.Wait(playlistId)
-			elapsed := time.Since(start)
-			log.Info("Waited for ", elapsed)
-			// Release the limiter when the function returns
-			defer func() {
-
-				p.limiter.Release(playlistId)
-			}()
 
 			data, err := fetchClip(clip)
 
@@ -253,7 +243,6 @@ func NewPrefetcher(clipPrefetchCount int, playlistRetention time.Duration, clipR
 		playlistInfo:         cmap.New[CacheItem[*PrefetchPlaylist]](),
 		playlistRetention:    playlistRetention,
 		clipRetention:        clipRetention,
-		limiter:              limiter.NewBasicLimiter(5, limiter.PerSecond),
 	}
 }
 
