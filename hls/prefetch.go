@@ -191,7 +191,7 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlist := playlistItem.Data
 
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
-	throttle := time.NewTicker(time.Second / model.Configuration.Throttle)
+	throttle := time.NewTicker(time.Second / time.Duration(model.Configuration.Throttle))
 	defer throttle.Stop()
 	for _, clip := range nextClips {
 		//if we are already in the process of fetching the clip, or we already have it cached, skip it

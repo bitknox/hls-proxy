@@ -15,7 +15,7 @@ import (
 // base useragent string
 const USER_AGENT string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 
-var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(model.Configuration.SegmentCount, model.Configuration.JanitorInterval*time.Second, model.Configuration.PlaylistRetention*time.Hour, model.Configuration.ClipRetention*time.Minute)
+var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(model.Configuration.SegmentCount, model.Configuration.JanitorInterval, model.Configuration.PlaylistRetention, model.Configuration.ClipRetention)
 
 func ManifestProxy(c echo.Context, input *model.Input) error {
 

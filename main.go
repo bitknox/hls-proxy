@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/bitknox/hls-proxy/model"
 	parsing "github.com/bitknox/hls-proxy/parsing"
@@ -28,7 +29,7 @@ func main() {
 				Usage: "how many segments to prefetch",
 				Value: 30,
 			},
-			&cli.DurationFlag{
+			&cli.IntFlag{
 				Name:  "throttle",
 				Usage: "how much to throttle prefetch requests (requests per second)",
 				Value: 5,
@@ -36,7 +37,7 @@ func main() {
 			&cli.DurationFlag{
 				Name:  "janitor-interval",
 				Usage: "how often should the janitor clean the cache",
-				Value: 20,
+				Value: 20 * time.Second,
 			},
 			&cli.IntFlag{
 				Name:  "attempts",
@@ -46,12 +47,12 @@ func main() {
 			&cli.DurationFlag{
 				Name:  "clip-retention",
 				Usage: "how long to keep ts files in cache",
-				Value: 30,
+				Value: 30 * time.Minute,
 			},
 			&cli.DurationFlag{
 				Name:  "playlist-retention",
 				Usage: "how long to keep playlists in cache",
-				Value: 5,
+				Value: 5 * time.Hour,
 			},
 			&cli.StringFlag{
 
