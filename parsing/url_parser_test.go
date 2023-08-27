@@ -17,7 +17,7 @@ func TestParseInputUrl(t *testing.T) {
 	assert.Equal(t, "b", r.Referer)
 	assert.Equal(t, "c", r.Origin)
 
-	r, err = ParseInputUrl(base64.StdEncoding.EncodeToString([]byte("a?|b")))
+	r, err = ParseInputUrl(base64.StdEncoding.EncodeToString([]byte("a|b")))
 	if err != nil {
 		t.Fatal("Error parsing base64 string")
 	}
