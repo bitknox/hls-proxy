@@ -95,8 +95,8 @@ func manifest_proxy(c echo.Context, input *model.Input) error {
 	res, err := hls.ModifyM3u8(string(bytes), finalURL, preFetcher)
 	elapsed := time.Since(start)
 	log.Debug("Modifying manifest took ", elapsed)
-	c.Response().Writer.Write([]byte(res))
 	c.Response().Status = http.StatusOK
+	c.Response().Writer.Write([]byte(res))
 	return nil
 }
 
@@ -145,6 +145,8 @@ func ts_proxy(c echo.Context, input *model.Input) error {
 	//send request to original host
 	resp, err := http_retry.ExecuteRetryableRequest(req, 3)
 
+	//Some hls files have a content ranges for the same ts file
+	//We therefore need to make sure that this is copied over to the response
 	if resp.Header.Get("Content-Range") != "" {
 		c.Response().Header().Set("Content-Range", resp.Header.Get("Content-Range"))
 	}

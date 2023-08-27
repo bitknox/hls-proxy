@@ -11,6 +11,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+/*
+ * The two functions in here differ in that one returns the response body as a byte array,
+ * and the other returns the response object that has to be handeled by the caller.
+ */
+
 func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Response, error) {
 	request.Close = true
 	var resp *http.Response

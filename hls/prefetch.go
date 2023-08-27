@@ -6,29 +6,34 @@ import (
 	"runtime"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	http_retry "github.com/bitknox/hls-proxy/http_retry"
 	mapset "github.com/deckarep/golang-set/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	log "github.com/sirupsen/logrus"
 )
 
+// Interface for structures that can be cleaned by a janitor
 type Cleanable interface {
 	setJanitor(j *Janitor)
 	getJanitor() *Janitor
 	Clean()
 }
 
+// CacheItem is a struct that holds the data and expiration time of a cached item
+// This makes it possible for the janitor to clean the cache
 type CacheItem[T any] struct {
 	Data       T
 	Expiration time.Time
 }
 
+// Janitor is a struct that holds the interval and stop channel for a janitor
 type Janitor struct {
 	Interval time.Duration
 	stop     chan bool
 }
 
+// Run is a function that runs the janitor, and cleans the cache at the specified interval
+// It stops when the stop recives a value
 func (j *Janitor) Run(c Cleanable) {
 	ticker := time.NewTicker(j.Interval)
 	for {
@@ -51,6 +56,7 @@ func runJanitor(c Cleanable, ci time.Duration) {
 	go j.Run(c)
 }
 
+// Structure that holds the playlist clips and the cached clips
 type PrefetchPlaylist struct {
 	clipRetention time.Duration
 	playlistId    string
@@ -123,6 +129,10 @@ func (m PrefetchPlaylist) addClip(clipUrl string, data []byte) {
 	})
 }
 
+/*
+Structure that handles prefetching of clips, and caching of playlists
+Supports automatic cleanup of cached playlists and clips if using the NewPrefetcherWithJanitor constructor
+*/
 type Prefetcher struct {
 	janitor              *Janitor
 	clipPrefetchCount    int
@@ -170,6 +180,7 @@ func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
 	})
 }
 
+// TODO: Properly implement rate limiting such that we don't overload the origin server2
 func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlistItem, ok := p.playlistInfo.Get(playlistId)
 	if !ok {

@@ -14,6 +14,12 @@ import (
 
 var counter atomic.Int32
 
+/*
+*	Very barebones m3u8 parser that will replace the URI inside the manifest with a proxy url
+*	It only supports a subset of the m3u8 tags and will not work with all m3u8 files
+*   It should probably be replaced with a proper m3u8 parser
+ */
+
 func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string, error) {
 
 	var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
