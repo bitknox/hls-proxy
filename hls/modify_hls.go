@@ -13,6 +13,7 @@ import (
 )
 
 var counter atomic.Int32
+var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
 
 /*
 *	Very barebones m3u8 parser that will replace the URI inside the manifest with a proxy url
@@ -22,7 +23,6 @@ var counter atomic.Int32
 
 func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string, error) {
 
-	var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
 	var newManifest = strings.Builder{}
 	host := os.Getenv("HOST")
 	port := os.Getenv("PORT")

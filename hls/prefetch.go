@@ -7,6 +7,7 @@ import (
 	"time"
 
 	http_retry "github.com/bitknox/hls-proxy/http_retry"
+	limiter "github.com/bitknox/hls-proxy/limiter"
 	mapset "github.com/deckarep/golang-set/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	log "github.com/sirupsen/logrus"
@@ -140,6 +141,7 @@ type Prefetcher struct {
 	playlistInfo         cmap.ConcurrentMap[string, CacheItem[*PrefetchPlaylist]]
 	playlistRetention    time.Duration
 	clipRetention        time.Duration
+	limiter              limiter.Limiter
 }
 
 func (p Prefetcher) GetFetchedClip(playlistId string, clipUrl string) ([]byte, bool) {
@@ -180,7 +182,7 @@ func (p Prefetcher) AddPlaylistToCache(playlistId string, clipUrls []string) {
 	})
 }
 
-// TODO: Properly implement rate limiting such that we don't overload the origin server2
+// We might want to introduce a delay between requests to the same host
 func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlistItem, ok := p.playlistInfo.Get(playlistId)
 	if !ok {
@@ -192,13 +194,24 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
 
 	for _, clip := range nextClips {
+		//if we are already in the process of fetching the clip, or we already have it cached, skip it
+		if p.currentlyPrefetching.Contains(clip) || playlist.fetchedClips.Has(clip) {
 
+			continue
+		}
+		p.currentlyPrefetching.Add(clip)
 		go func(clip string) {
-			if p.currentlyPrefetching.Contains(clip) || playlist.fetchedClips.Has(clip) {
-				return
-			}
 
-			p.currentlyPrefetching.Add(clip)
+			// Wait for the limiter to allow concurrency
+			start := time.Now()
+			p.limiter.Wait(playlistId)
+			elapsed := time.Since(start)
+			log.Info("Waited for ", elapsed)
+			// Release the limiter when the function returns
+			defer func() {
+
+				p.limiter.Release(playlistId)
+			}()
 
 			data, err := fetchClip(clip)
 
@@ -218,10 +231,6 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	}
 
 	return nil
-}
-
-func maxConcurrentRequestsLimiter(concurrentRequests uint) chan bool {
-	return make(chan bool, concurrentRequests)
 }
 
 func fetchClip(clipUrl string) ([]byte, error) {
@@ -244,6 +253,7 @@ func NewPrefetcher(clipPrefetchCount int, playlistRetention time.Duration, clipR
 		playlistInfo:         cmap.New[CacheItem[*PrefetchPlaylist]](),
 		playlistRetention:    playlistRetention,
 		clipRetention:        clipRetention,
+		limiter:              limiter.NewBasicLimiter(5, limiter.PerSecond),
 	}
 }
 
