@@ -15,7 +15,7 @@ import (
 // base useragent string
 const USER_AGENT string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 
-var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(40, 20*time.Second, 5*time.Hour, 30*time.Minute)
+var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(model.Configuration.SegmentCount, model.Configuration.JanitorInterval*time.Second, model.Configuration.PlaylistRetention*time.Hour, model.Configuration.ClipRetention*time.Minute)
 
 func ManifestProxy(c echo.Context, input *model.Input) error {
 
@@ -54,17 +54,16 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	pId := c.QueryParam("pId")
 	//check if we have the ts file in cache
 
-	start := time.Now()
-	if pId != "" {
+	if pId != "" && model.Configuration.Prefetch {
+		start := time.Now()
 		data, found := preFetcher.GetFetchedClip(pId, input.Url)
 		if found {
 			c.Response().Writer.Write(data)
 			return nil
 		}
+		elapsed := time.Since(start)
+		log.Debug("Fetching clip from cache took ", elapsed)
 	}
-	elapsed := time.Since(start)
-
-	log.Debug("Fetching clip from cache took ", elapsed)
 
 	req, err := http.NewRequest("GET", input.Url, nil)
 
@@ -82,7 +81,7 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	log.Debug("Fetching clip from origin")
 
 	//send request to original host
-	resp, err := http_retry.ExecuteRetryableRequest(req, 3)
+	resp, err := http_retry.ExecuteRetryableRequest(req, model.Configuration.Attempts)
 
 	//Some hls files have a content ranges for the same ts file
 	//We therefore need to make sure that this is copied over to the response

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	http_retry "github.com/bitknox/hls-proxy/http_retry"
+	"github.com/bitknox/hls-proxy/model"
 	mapset "github.com/deckarep/golang-set/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	log "github.com/sirupsen/logrus"
@@ -190,7 +191,7 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlist := playlistItem.Data
 
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
-	throttle := time.NewTicker(time.Second / 5)
+	throttle := time.NewTicker(time.Second / model.Configuration.Throttle)
 	defer throttle.Stop()
 	for _, clip := range nextClips {
 		//if we are already in the process of fetching the clip, or we already have it cached, skip it
@@ -226,7 +227,7 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 func fetchClip(clipUrl string) ([]byte, error) {
 	request, err := http.NewRequest("GET", clipUrl, nil)
 
-	resp, err := http_retry.ExecuteRetryClipRequest(request, 5)
+	resp, err := http_retry.ExecuteRetryClipRequest(request, model.Configuration.Attempts)
 
 	if err != nil {
 		log.Error("Error fetching clip ", clipUrl, err)
