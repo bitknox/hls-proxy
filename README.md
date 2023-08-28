@@ -51,7 +51,6 @@ const input = `${streamUrl}|${referer}|${origin}`
 const url = `${proxyHost}:${proxyPort}/${btoa(input)}`
 ```
 
-
 ## 🆘 Help
 
 ```bash

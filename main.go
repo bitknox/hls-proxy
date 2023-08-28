@@ -77,7 +77,7 @@ func main() {
 			model.InitializeConfig(c)
 			proxy.InitPrefetcher(&model.Configuration)
 			fmt.Printf("%v", model.Configuration)
-			launch_server(c.String("host"), c.Int("port"), c.String("log-level"))
+			launch_server("", c.Int("port"), c.String("log-level"))
 			return nil
 		},
 	}
@@ -102,7 +102,7 @@ func launch_server(host string, port int, logLevel string) {
 	// Middleware
 	e.Use(middleware.CORS())
 	//e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+	//e.Use(middleware.Recover())
 
 	// Routes
 	e.GET("/:input", handle_request)
