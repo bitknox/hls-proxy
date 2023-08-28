@@ -12,17 +12,17 @@
 </p>
 <!-- [END BADGES] -->
 
-## Purpose ✏️
+## ✏️Purpose
 
 A simple proxy server that parses m3u8 manifets and proxies all requests. This is useful for adding headers, prefetching clips or other custom logic when loading streams that cannot be modified directly at the source.
 
-## Getting Started 🏎
+## 🏎 Getting Started
 
 ### Dependencies
 
 * [golang](https://go.dev/doc/install)
 
-### Installing 👨‍💻
+### 👨‍💻Installing
 
 ```bash
 git clone https://github.com/bitknox/hls-proxy.git
@@ -31,8 +31,28 @@ go install
 hls-proxy
 ```
 
+### 📝 Usage (JS)
+To use the proxy, simply supply the proxy with the url in base64 as shown below. Optionally a referer and origin can be added.
 
-## Help 🆘
+```javascript
+//proxy stream
+const proxyHost = "http://localhost"
+const proxyPort = "1323"
+const streamUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+
+const url = `${proxyHost}:${proxyPort}/${btoa(streamUrl)}`
+const referer
+
+//proxy stream with header
+const referer = "https://google.com"
+const origin = "https://amazon.com"
+//note that origin can be omitted
+const input = `${streamUrl}|${referer}|${origin}`
+const url = `${proxyHost}:${proxyPort}/${btoa(input)}`
+```
+
+
+## 🆘 Help
 
 ```bash
 hls-proxy h
@@ -54,25 +74,25 @@ hls-proxy h
 --help, -h                  show help
 ```
 
-## Contributing 🧑‍🏭
+## 🧑‍🏭Contributing
 
 Contributions are always welcome. This is one of my first projets in golang, so I'm sure there room for a lot of improvement.
 
-## Authors 📗
+## 📗 Authors
 
 [@bitknox](https://github.com/bitknox)
 
-## Version History 🗎
+## 🗎 Version History
 
 * 1.0
     * Initial Release
     * See [commit change]() or See [release history]()
 
-## License ©️
+## ©️ License
 
 This project is licensed under the MIT License - see the LICENSE file for details
 
-## Acknowledgments 🤚
+## 🤚 Acknowledgments
 
 Inspiration:
 * [HLS-Proxy](https://github.com/warren-bank/HLS-Proxy) by [@warren-bank](https://github.com/warren-bank)
