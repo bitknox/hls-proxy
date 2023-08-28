@@ -15,7 +15,11 @@ import (
 // base useragent string
 const USER_AGENT string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 
-var preFetcher *hls.Prefetcher = hls.NewPrefetcherWithJanitor(model.Configuration.SegmentCount, model.Configuration.JanitorInterval, model.Configuration.PlaylistRetention, model.Configuration.ClipRetention)
+var preFetcher *hls.Prefetcher
+
+func InitPrefetcher(c *model.Config) {
+	preFetcher = hls.NewPrefetcherWithJanitor(c.SegmentCount, c.JanitorInterval, c.PlaylistRetention, c.ClipRetention)
+}
 
 func ManifestProxy(c echo.Context, input *model.Input) error {
 
@@ -63,6 +67,7 @@ func TsProxy(c echo.Context, input *model.Input) error {
 		}
 		elapsed := time.Since(start)
 		log.Debug("Fetching clip from cache took ", elapsed)
+
 	}
 
 	req, err := http.NewRequest("GET", input.Url, nil)
@@ -81,6 +86,7 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	log.Debug("Fetching clip from origin")
 
 	//send request to original host
+
 	resp, err := http_retry.ExecuteRetryableRequest(req, model.Configuration.Attempts)
 
 	//Some hls files have a content ranges for the same ts file
@@ -96,6 +102,7 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	defer resp.Body.Close()
 
 	io.Copy(c.Response().Writer, resp.Body)
+
 	return nil
 }
 

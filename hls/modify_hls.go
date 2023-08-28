@@ -2,13 +2,13 @@ package hls
 
 import (
 	"net/url"
-	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
 
+	"github.com/bitknox/hls-proxy/model"
 	"github.com/cristalhq/base64"
 )
 
@@ -24,9 +24,8 @@ var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
 func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string, error) {
 
 	var newManifest = strings.Builder{}
-	host := os.Getenv("HOST")
-	port := os.Getenv("PORT")
-
+	var host = model.Configuration.Host
+	var port = model.Configuration.Port
 	parentPath := path.Dir(host_url.Path)
 	host_url.Path = parentPath
 	host_url.RawQuery = ""

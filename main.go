@@ -60,10 +60,10 @@ func main() {
 				Usage: "hostname to attach to proxy url",
 				Value: "",
 			},
-			&cli.IntFlag{
+			&cli.StringFlag{
 				Name:  "port",
 				Usage: "port to attach to proxy url",
-				Value: 1323,
+				Value: "1323",
 			},
 			&cli.StringFlag{
 				Name:  "log-level",
@@ -75,6 +75,8 @@ func main() {
 		Usage: "start hls proxy server",
 		Action: func(c *cli.Context) error {
 			model.InitializeConfig(c)
+			proxy.InitPrefetcher(&model.Configuration)
+			fmt.Printf("%v", model.Configuration)
 			launch_server(c.String("host"), c.Int("port"), c.String("log-level"))
 			return nil
 		},
@@ -99,7 +101,7 @@ func launch_server(host string, port int, logLevel string) {
 
 	// Middleware
 	e.Use(middleware.CORS())
-	e.Use(middleware.Logger())
+	//e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
 	// Routes

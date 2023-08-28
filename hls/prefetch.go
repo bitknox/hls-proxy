@@ -111,7 +111,9 @@ func (m PrefetchPlaylist) Clean() {
 func (m PrefetchPlaylist) getNextPrefetchClips(clipUrl string, count int) []string {
 
 	clipIndex, ok := m.clipToIndex.Get(clipUrl)
+
 	if !ok {
+
 		return []string{}
 	}
 	lastCliPindex := math.Min(float64(clipIndex+count), float64(len(m.playlistClips)-1))
@@ -191,6 +193,7 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 	playlist := playlistItem.Data
 
 	nextClips := playlist.getNextPrefetchClips(clipUrl, p.clipPrefetchCount)
+
 	throttle := time.NewTicker(time.Second / time.Duration(model.Configuration.Throttle))
 	defer throttle.Stop()
 	for _, clip := range nextClips {
@@ -201,7 +204,9 @@ func (p Prefetcher) prefetchClips(clipUrl string, playlistId string) error {
 			continue
 		}
 		p.currentlyPrefetching.Add(clip)
+
 		<-throttle.C
+
 		go func(clip string) {
 
 			data, err := fetchClip(clip)

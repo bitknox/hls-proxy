@@ -16,7 +16,6 @@
 
 A simple proxy server that parses m3u8 manifets and proxies all requests. This is useful for adding headers, prefetching clips or other custom logic when loading streams that cannot be modified directly at the source.
 
-
 ## Getting Started 🏎
 
 ### Dependencies
