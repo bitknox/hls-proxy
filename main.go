@@ -101,8 +101,8 @@ func launch_server(host string, port int, logLevel string) {
 
 	// Middleware
 	e.Use(middleware.CORS())
-	//e.Use(middleware.Logger())
-	//e.Use(middleware.Recover())
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
 	// Routes
 	e.GET("/:input", handle_request)
