@@ -41,7 +41,6 @@ const proxyPort = "1323"
 const streamUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
 
 const url = `${proxyHost}:${proxyPort}/${btoa(streamUrl)}`
-const referer
 
 //proxy stream with header
 const referer = "https://google.com"
