@@ -42,7 +42,7 @@ func main() {
 			&cli.IntFlag{
 				Name:  "attempts",
 				Usage: "how many times to retry a request for a ts file",
-				Value: 3,
+				Value: 10,
 			},
 			&cli.DurationFlag{
 				Name:  "clip-retention",

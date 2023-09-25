@@ -11,7 +11,7 @@ import (
 var DefaultHttpClient = http.Client{
 	Transport: &http.Transport{
 		Dial: (&net.Dialer{
-			Timeout: 15 * time.Second,
+			Timeout: 60 * time.Second,
 		}).Dial,
 	},
 }
