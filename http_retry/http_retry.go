@@ -22,9 +22,10 @@ func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Respons
 		func() error {
 			var err error
 			resp, err = DefaultHttpClient.Do(request)
+			if(resp != nil) {
 			if resp.StatusCode >= 300 || resp.StatusCode < 200 {
 				return errors.New("Non 2xx status code")
-			}
+			}}
 
 			return err
 		},
