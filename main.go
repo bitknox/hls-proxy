@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -118,8 +119,14 @@ func handle_request(c echo.Context) error {
 	if e != nil {
 		return e
 	}
+
+	inputUrl, err := url.Parse(input.Url)
+
+	if err != nil {
+		return err
+	}
 	//TODO: Not all m3u8 files end with m3u8
-	if strings.HasSuffix(input.Url, "m3u8") {
+	if strings.HasSuffix(inputUrl.Path, ".m3u8") {
 		return proxy.ManifestProxy(c, input)
 	} else {
 		return proxy.TsProxy(c, input)

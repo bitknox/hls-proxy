@@ -29,6 +29,8 @@ func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string,
 	parentPath := path.Dir(host_url.Path)
 	host_url.Path = parentPath
 	host_url.RawQuery = ""
+	host_url.Fragment = ""
+
 	parentUrl := host_url.String()
 
 	newManifest.Grow(len(m3u8))
