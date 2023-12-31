@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -80,6 +81,7 @@ func TsProxy(c echo.Context, input *model.Input) error {
 
 	//copy over range header if applicable
 	if c.Request().Header.Get("Range") != "" {
+		fmt.Println("Range header found")
 		req.Header.Add("Range", c.Request().Header.Get("Range"))
 	}
 
@@ -99,6 +101,11 @@ func TsProxy(c echo.Context, input *model.Input) error {
 		c.Response().Header().Set("Content-Length", resp.Header.Get("Content-Length"))
 	}
 
+	if resp.Header.Get("Content-Type") != "" {
+		c.Response().Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+	}
+
+	c.Response().Status = resp.StatusCode
 	defer resp.Body.Close()
 
 	io.Copy(c.Response().Writer, resp.Body)
