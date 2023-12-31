@@ -94,21 +94,20 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	//Some hls files have a content ranges for the same ts file
 	//We therefore need to make sure that this is copied over to the response
 	if resp.Header.Get("Content-Range") != "" {
-		c.Response().Header().Set("Content-Range", resp.Header.Get("Content-Range"))
+		c.Response().Writer.Header().Set("Content-Range", resp.Header.Get("Content-Range"))
 	}
 
 	if resp.Header.Get("Content-Length") != "" {
-		c.Response().Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+		c.Response().Writer.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
 	}
 
 	if resp.Header.Get("Content-Type") != "" {
-		c.Response().Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		c.Response().Writer.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	}
 
-	c.Response().Status = resp.StatusCode
 	defer resp.Body.Close()
-
-	io.Copy(c.Response().Writer, resp.Body)
+	c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
+	//io.Copy(c.Response().Writer, resp.Body)
 
 	return nil
 }
