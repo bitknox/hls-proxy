@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -23,7 +22,6 @@ func InitPrefetcher(c *model.Config) {
 }
 
 func ManifestProxy(c echo.Context, input *model.Input) error {
-	fmt.Println("Fetching manifest from ", input.Url)
 	req, err := http.NewRequest("GET", input.Url, nil)
 	if err != nil {
 		return err
@@ -56,8 +54,6 @@ func ManifestProxy(c echo.Context, input *model.Input) error {
 func TsProxy(c echo.Context, input *model.Input) error {
 	//parse incomming base64 query string and decde it into model struct
 
-	fmt.Println("Fetching ts from ", input.Url)
-
 	pId := c.QueryParam("pId")
 	//check if we have the ts file in cache
 
@@ -83,7 +79,6 @@ func TsProxy(c echo.Context, input *model.Input) error {
 
 	//copy over range header if applicable
 	if c.Request().Header.Get("Range") != "" {
-		fmt.Println("Range header found")
 		req.Header.Add("Range", c.Request().Header.Get("Range"))
 	}
 
