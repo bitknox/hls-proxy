@@ -23,7 +23,7 @@ func InitPrefetcher(c *model.Config) {
 }
 
 func ManifestProxy(c echo.Context, input *model.Input) error {
-
+	fmt.Println("Fetching manifest from ", input.Url)
 	req, err := http.NewRequest("GET", input.Url, nil)
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func ManifestProxy(c echo.Context, input *model.Input) error {
 	//modify m3u8 file to point to proxy
 	start := time.Now()
 	bytes, err := io.ReadAll(resp.Body)
-	res, err := hls.ModifyM3u8(string(bytes), finalURL, preFetcher)
+	res, err := hls.ModifyM3u8(string(bytes), finalURL, preFetcher, input)
 	elapsed := time.Since(start)
 	log.Debug("Modifying manifest took ", elapsed)
 	c.Response().Status = http.StatusOK
@@ -55,6 +55,8 @@ func ManifestProxy(c echo.Context, input *model.Input) error {
 
 func TsProxy(c echo.Context, input *model.Input) error {
 	//parse incomming base64 query string and decde it into model struct
+
+	fmt.Println("Fetching ts from ", input.Url)
 
 	pId := c.QueryParam("pId")
 	//check if we have the ts file in cache

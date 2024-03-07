@@ -22,15 +22,16 @@ func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Respons
 		func() error {
 			var err error
 			resp, err = DefaultHttpClient.Do(request)
-			if(resp != nil) {
-			if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-				return errors.New("Non 2xx status code")
-			}}
+			if resp != nil {
+				if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+					return errors.New("Non 2xx status code")
+				}
+			}
 
 			return err
 		},
 		retry.Attempts(uint(attempts)),
-		retry.Delay(time.Second* 3),
+		retry.Delay(time.Second*3),
 		retry.OnRetry(func(n uint, err error) {
 			log.Error("Retrying request after error:", err, n)
 		}),
@@ -68,7 +69,7 @@ func ExecuteRetryClipRequest(request *http.Request, attempts int) ([]byte, error
 			return err
 		},
 		retry.Attempts(uint(attempts)),
-		retry.Delay(time.Second * 2),
+		retry.Delay(time.Second*2),
 		retry.OnRetry(func(n uint, err error) {
 			log.Error("Retrying request after error:", err, n)
 		}),

@@ -21,7 +21,7 @@ var re = regexp.MustCompile(`(?i)URI=["']([^"']+)["']`)
 *   It should probably be replaced with a proper m3u8 parser
  */
 
-func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string, error) {
+func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher, input *model.Input) (string, error) {
 
 	var newManifest = strings.Builder{}
 	var host = model.Configuration.Host
@@ -44,14 +44,24 @@ func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string,
 			if line[0] == '#' {
 				//check for known tags and use regex to replace URI inside
 				if strings.HasPrefix(line, "#EXT-X-MEDIA") {
+					//replace the URI with a proxy url, optionally add referer and origin headers
+
 					match := re.FindStringSubmatch(line)
-					newManifest.WriteString(strings.Replace(line, match[1], "http://"+host+":"+port+"/"+base64.StdEncoding.EncodeToString([]byte(parentUrl+"/"+match[1])), 1))
+					proxyUrl := parentUrl + "/" + match[1]
+					if input.Referer != "" {
+						proxyUrl += "|" + input.Referer
+					}
+					if input.Origin != "" {
+						proxyUrl += "|" + input.Origin
+					}
+					encodedProxyUrl := base64.StdEncoding.EncodeToString([]byte(proxyUrl))
+					newManifest.WriteString(strings.Replace(line, match[1], "http://"+host+":"+port+"/"+encodedProxyUrl, 1))
 				} else {
 					newManifest.WriteString(line)
 				}
 			} else if len(strings.TrimSpace(line)) > 0 {
 
-				AddProxyUrl(manifestAddr, line, true, parentUrl, &newManifest)
+				AddProxyUrl(manifestAddr, line, true, parentUrl, &newManifest, input)
 
 			}
 			newManifest.WriteString("\n")
@@ -71,7 +81,7 @@ func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string,
 			} else {
 				//the line here is a url to ts file that can be prefetched
 				clipUrls = append(clipUrls, parentUrl+"/"+line)
-				AddProxyUrl(tsAddr, line, false, parentUrl, &newManifest)
+				AddProxyUrl(tsAddr, line, false, parentUrl, &newManifest, input)
 				newManifest.WriteString(".ts")
 				newManifest.WriteString("?pId=" + strId)
 			}
@@ -85,11 +95,19 @@ func ModifyM3u8(m3u8 string, host_url *url.URL, prefetcher *Prefetcher) (string,
 	return newManifest.String(), nil
 }
 
-func AddProxyUrl(baseAddr string, url string, isManifest bool, parentUrl string, builder *strings.Builder) {
+func AddProxyUrl(baseAddr string, url string, isManifest bool, parentUrl string, builder *strings.Builder, input *model.Input) {
+
+	proxyUrl := url
+	if input.Referer != "" {
+		proxyUrl += "|" + input.Referer
+	}
+	if input.Origin != "" {
+		proxyUrl += "|" + input.Origin
+	}
 	builder.WriteString(baseAddr)
 	if strings.HasPrefix(url, "http") {
-		builder.WriteString(base64.StdEncoding.EncodeToString([]byte(url)))
+		builder.WriteString(base64.StdEncoding.EncodeToString([]byte(proxyUrl)))
 	} else {
-		builder.WriteString(base64.StdEncoding.EncodeToString([]byte(parentUrl + "/" + url)))
+		builder.WriteString(base64.StdEncoding.EncodeToString([]byte(parentUrl + "/" + proxyUrl)))
 	}
 }
