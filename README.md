@@ -47,7 +47,7 @@ const referer = "https://google.com"
 const origin = "https://amazon.com"
 //note that origin can be omitted
 const input = `${streamUrl}|${referer}|${origin}`
-const url = `${proxyHost}:${proxyPort}/${btoa(input)}`
+const proxiedUrl = `${proxyHost}:${proxyPort}/${btoa(input)}`
 ```
 
 ## 🆘 Help
