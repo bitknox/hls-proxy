@@ -2,6 +2,7 @@ package http_retry
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -24,6 +25,7 @@ func ExecuteRetryableRequest(request *http.Request, attempts int) (*http.Respons
 			resp, err = DefaultHttpClient.Do(request)
 			if resp != nil {
 				if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+					fmt.Println(resp.StatusCode)
 					return errors.New("Non 2xx status code")
 				}
 			}

@@ -55,6 +55,11 @@ func main() {
 				Usage: "how long to keep playlists in cache",
 				Value: 5 * time.Hour,
 			},
+			&cli.BoolFlag{
+				Name:  "https",
+				Usage: "use https instead of http",
+				Value: false,
+			},
 			&cli.StringFlag{
 
 				Name:  "host",

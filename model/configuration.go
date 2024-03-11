@@ -18,6 +18,7 @@ type Config struct {
 	ClipRetention     time.Duration
 	PlaylistRetention time.Duration
 	JanitorInterval   time.Duration
+	UseHttps          bool
 	Host              string
 	Port              string
 }
@@ -31,6 +32,7 @@ func InitializeConfig(c *cli.Context) {
 		ClipRetention:     c.Duration("clip-retention"),
 		PlaylistRetention: c.Duration("playlist-retention"),
 		JanitorInterval:   c.Duration("janitor-interval"),
+		UseHttps:          c.Bool("https"),
 		Host:              c.String("host"),
 		Port:              c.String("port"),
 	}
