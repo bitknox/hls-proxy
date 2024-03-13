@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bitknox/hls-proxy/encryption"
 	"github.com/bitknox/hls-proxy/hls"
 	"github.com/bitknox/hls-proxy/http_retry"
 	"github.com/bitknox/hls-proxy/model"
@@ -57,13 +58,30 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	pId := c.QueryParam("pId")
 	//check if we have the ts file in cache
 
+	decryptionKey := c.QueryParam("key")
+	initialVector := c.QueryParam("iv")
+
 	if pId != "" && model.Configuration.Prefetch {
 		start := time.Now()
 		data, found := preFetcher.GetFetchedClip(pId, input.Url)
+
 		if found {
+
+			//we need to decrypt the segment if applicable
+			if decryptionKey != "" {
+
+				data, err := encryption.DecryptSegment(data, decryptionKey, initialVector)
+				if err != nil {
+					log.Error("Error decrypting segment ", err)
+					return err
+				}
+				c.Response().Writer.Write(data)
+				return nil
+			}
 			c.Response().Writer.Write(data)
 			return nil
 		}
+
 		elapsed := time.Since(start)
 		log.Debug("Fetching clip from cache took ", elapsed)
 
@@ -95,7 +113,7 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	}
 
 	if resp.Header.Get("Content-Length") != "" {
-		c.Response().Writer.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+		//c.Response().Writer.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
 	}
 
 	if resp.Header.Get("Content-Type") != "" {
@@ -103,10 +121,30 @@ func TsProxy(c echo.Context, input *model.Input) error {
 	}
 
 	defer resp.Body.Close()
-	c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
-	//io.Copy(c.Response().Writer, resp.Body)
 
-	return nil
+	//if we need to decrypt the segment, do it here
+
+	if decryptionKey != "" {
+
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error("Error reading segment ", err)
+			return err
+		}
+		data, err = encryption.DecryptSegment(data, decryptionKey, initialVector)
+		if err != nil {
+			log.Error("Error decrypting segment ", err)
+			return err
+		}
+		c.Response().Writer.Write(data)
+		return nil
+	} else {
+		c.Stream(resp.StatusCode, resp.Header.Get("Content-Type"), resp.Body)
+		//io.Copy(c.Response().Writer, resp.Body)
+
+		return nil
+	}
+
 }
 
 func addBaseHeaders(req *http.Request, input *model.Input) {

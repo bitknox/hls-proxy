@@ -71,6 +71,11 @@ func main() {
 				Usage: "port to attach to proxy url",
 				Value: "1323",
 			},
+			&cli.BoolFlag{
+				Name:  "decrypt",
+				Usage: "decrypt encrypted segments",
+				Value: false,
+			},
 			&cli.StringFlag{
 				Name:  "log-level",
 				Usage: "log level",
